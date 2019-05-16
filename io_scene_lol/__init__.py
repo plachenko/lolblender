@@ -24,7 +24,7 @@ bl_info = {
     'name': 'Import League of Legends Character files (.skn;.skl)',
     'author': 'Pascal Lis, Zac Berkowitz',
     'version': (0,7),
-    'blender': (2,74,0),
+    'blender': (2,80,0),
     'location': 'File > Import',
     'category': 'Import/Export',
     'api': 31878,

@@ -292,13 +292,13 @@ def buildMesh(filepath):
     obj = bpy.data.objects.new('lolMesh', mesh)
 
     #Link object to the current scene
-    scene.objects.link(obj)
+    scene.collection.objects.link(obj)
 
 
     #Create UV texture coords
     texList = []
     uvtexName = 'lolUVtex'
-    obj.data.uv_textures.new(uvtexName)
+    obj.data.uv_layers.new(name=uvtexName)
     uv_layer = obj.data.uv_layers[-1].data  # sets layer to the above texture
     set = []
     for k, loop in enumerate(obj.data.loops):
@@ -319,7 +319,7 @@ def buildMesh(filepath):
     #material = bpy.data.materials.ne(materialName)
     mesh.update() 
     #set active
-    obj.select = True
+    obj.select_set(True)
 
     return {'FINISHED'}
     
@@ -361,7 +361,7 @@ def exportSKN(meshObj, output_filepath, input_filepath, BASE_ON_IMPORT, VERSION)
     #Go into object mode & select only the mesh
     bpy.ops.object.mode_set(mode='OBJECT')
     bpy.ops.object.select_all(action='DESELECT')
-    meshObj.select = True
+    meshObj.select_set(True)
 
     numFaces = len(meshObj.data.loops) // 3
     

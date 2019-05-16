@@ -400,7 +400,7 @@ def buildSKL(boneList, version):
                 newBone.parent = parentBone
                 parQuat = boneList[boneParentID].quat
                 boneHead.rotate(parQuat)  # only apply parent rotation to self
-                bone.quat = parQuat * bone.quat  # for children
+                bone.quat = parQuat @ bone.quat  # for childrea
 
                 # parentPos = mathutils.Vector(boneList[boneParentID].position)
                 parentPos = parentBone.head

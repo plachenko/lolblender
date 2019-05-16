@@ -22,23 +22,24 @@ from bpy import props
 from bpy_extras.io_utils import ImportHelper, ExportHelper
 from . import lolMesh, lolSkeleton, lolAnimation
 from os import path
+from math import radians
 
 __bpydoc__="""
 Import/Export a League of Legends character model, including
 skeleton and textures.
 """
 
+
 class IMPORT_OT_lol(bpy.types.Operator, ImportHelper):
     bl_label="Import LoL"
     bl_idname="import.lol"
 
-    SKN_FILE = props.StringProperty(name='Mesh', description='Model .skn file')
-    SKL_FILE = props.StringProperty(name='Skeleton', description='Model .skl file')
-    DDS_FILE = props.StringProperty(name='Texture', description='Model .dds file')    
-    MODEL_DIR = props.StringProperty()
-    CLEAR_SCENE = props.BoolProperty(name='ClearScene', description='Clear current scene before importing?', default=True)
-    APPLY_WEIGHTS = props.BoolProperty(name='LoadWeights', description='Load default bone weights from .skn file', default=True)
-    
+    SKN_FILE: props.StringProperty(name='Mesh', description='Model .skn file')
+    SKL_FILE: props.StringProperty(name='Skeleton', description='Model .skl file')
+    DDS_FILE: props.StringProperty(name='Texture', description='Model .dds file')    
+    MODEL_DIR: props.StringProperty()
+    CLEAR_SCENE: props.BoolProperty(name='ClearScene', description='Clear current scene before importing?', default=True)
+    APPLY_WEIGHTS: props.BoolProperty(name='LoadWeights', description='Load default bone weights from .skn file', default=True)
        
     def draw(self, context):
         layout = self.layout
@@ -74,8 +75,8 @@ class IMPORT_OT_lolanm(bpy.types.Operator, ImportHelper):
     bl_label="Import LoL Animation"
     bl_idname="import.lolanm"
 
-    ANM_FILE = props.StringProperty(name='Animation', description='Animation .anm file')
-    MODEL_DIR = props.StringProperty()
+    ANM_FILE: props.StringProperty(name='Animation', description='Animation .anm file')
+    MODEL_DIR: props.StringProperty()
        
     def draw(self, context):
         layout = self.layout
@@ -100,11 +101,11 @@ class EXPORT_OT_lol(bpy.types.Operator, ExportHelper):
     bl_idname="export.lol"
     bl_label = "Export .skn"
 
-    VERSION = props.IntProperty(name='Version No.', description='.SKN version number', default=4)
-    OUTPUT_FILE = props.StringProperty(name='Export File', description='File to which model will be exported')
-    BASE_ON_IMPORT = props.BoolProperty(name='Base On Imported SKN', description='Base writing on an imported SKN of choice', default=True)
-    INPUT_FILE = props.StringProperty(name='Import File', description='File to import certain metadata from')
-    MODEL_DIR = props.StringProperty()
+    VERSION: props.IntProperty(name='Version No.', description='.SKN version number', default=4)
+    OUTPUT_FILE: props.StringProperty(name='Export File', description='File to which model will be exported')
+    BASE_ON_IMPORT: props.BoolProperty(name='Base On Imported SKN', description='Base writing on an imported SKN of choice', default=True)
+    INPUT_FILE: props.StringProperty(name='Import File', description='File to import certain metadata from')
+    MODEL_DIR: props.StringProperty()
 
     filename_ext = '.skn'
     def draw(self, context):
@@ -174,9 +175,9 @@ def import_char(MODEL_DIR="", SKN_FILE="", SKL_FILE="", DDS_FILE="",
         lolSkeleton.buildSKL(boneList, sklHeader.version)
         armObj = bpy.data.objects['Armature']
         armObj.name ='lolArmature'
-        armObj.data.draw_type = 'STICK'
+        armObj.data.display_type = 'STICK'
         armObj.data.show_axes = True
-        armObj.show_x_ray = True
+        armObj.show_in_front = True
 
     if SKN_FILE:
         SKN_FILEPATH=path.join(MODEL_DIR, SKN_FILE)
@@ -184,9 +185,9 @@ def import_char(MODEL_DIR="", SKN_FILE="", SKL_FILE="", DDS_FILE="",
         lolMesh.buildMesh(SKN_FILEPATH)
         meshObj = bpy.data.objects['lolMesh']
         bpy.ops.object.select_all(action='DESELECT')
-        meshObj.select = True
+        meshObj.select_set(True)
         bpy.ops.transform.resize(value=(1,1,-1), constraint_axis=(False, False,
-            True), constraint_orientation='GLOBAL')
+            True), orient_type='GLOBAL')
         #meshObj.name = 'lolMesh'
         #Presently io_scene_obj.load() does not import vertex normals, 
         #so do it ourselves
@@ -215,14 +216,24 @@ def import_char(MODEL_DIR="", SKN_FILE="", SKL_FILE="", DDS_FILE="",
         tex = bpy.data.textures.new(img_name + '_texImage', type='IMAGE')
         tex.image = img
         mat = bpy.data.materials.new(name=(img_name + '_mat'))
-        mat.use_shadeless = True
+        mat.use_nodes = True
+        bsdf = mat.node_tree.nodes["Principled BSDF"]
+        texImg = mat.node_tree.nodes.new('ShaderNodeTexImage')
+        texImg.image = img
+        mat.node_tree.links.new(bsdf.inputs['Emission'], texImg.outputs['Color'])
 
-        mtex = mat.texture_slots.add()
-        mtex.texture = tex
-        mtex.texture_coords = 'UV'
-        mtex.use_map_color_diffuse = True
+        #mat.use_shadeless = True
 
-        meshObj.data.materials.append(mat)
+        #mtex = mat.texture_slots.add()
+        #mtex.texture = tex
+        #mtex.texture_coords = 'UV'
+        #mtex.use_map_color_diffuse = True
+
+        #meshObj.data.materials.append(mat)
+        if meshObj.data.materials:
+            meshObj.data.materials[0] = mat
+        else:
+            meshObj.data.materials.append(mat)
 
 def import_animation(MODEL_DIR="", ANM_FILE=""):
     '''Import an Animation for a LoL character
@@ -289,30 +300,34 @@ def menu_func_import(self, context):
     # self.layout.operator(IMPORT_OT_lolanm.bl_idname, text='League of Legends Animation(.anm)')
     # self.layout.operator(IMPORT_OT_sco.bl_idname, text='League of Legends Particle (.sco)')
 
+classes = (
+    IMPORT_OT_lol,
+    IMPORT_OT_lolanm,
+    EXPORT_OT_lol,
+    IMPORT_OT_sco
+)
 
 def menu_func_export(self, context):
     self.layout.operator(EXPORT_OT_lol.bl_idname, text="League of Legends (.skn)")
 
 def register():
-    bpy.utils.register_class(IMPORT_OT_lol)
-    bpy.utils.register_class(IMPORT_OT_lolanm)
-    bpy.utils.register_class(IMPORT_OT_sco)
-    bpy.types.INFO_MT_file_import.append(menu_func_import)
+    from bpy.utils import register_class
 
-    bpy.utils.register_class(EXPORT_OT_lol)
-    bpy.types.INFO_MT_file_export.append(menu_func_export)
+    for cls in classes:
+        register_class(cls)
+
+    bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
+    bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
+
+    #bpy.utils.register_class(EXPORT_OT_lol)
 
 def unregister():
-    bpy.types.INFO_MT_file_import.remove(menu_func_import)
-    bpy.types.INFO_MT_file_export.remove(menu_func_export)
+    from bpy.utils import unregister_class
 
-
-
-
-
-
-
-
+    for cls in reversed(classes):
+        unregister_class(cls)
+    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
+    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
 def test_anm():
     base_dir = "C:\\Users\\Tath\\Downloads\\New folder\\DATA\\Characters\\Annie\\"
